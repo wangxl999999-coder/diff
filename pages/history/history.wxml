@@ -1,0 +1,51 @@
+<view class="container {{theme}}">
+  <!-- 头部 -->
+  <view class="header">
+    <view class="header-left" bindtap="goBack">
+      <text class="back-icon">←</text>
+      <text class="header-title">历史记录</text>
+    </view>
+    <view class="header-right" bindtap="clearAllHistory">
+      <text class="clear-btn">清空</text>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view wx:if="{{historyList.length === 0}}" class="empty-state">
+    <text class="empty-icon">📝</text>
+    <text class="empty-text">暂无历史记录</text>
+    <text class="empty-desc">使用提词器后会自动保存记录</text>
+    <button class="empty-btn" bindtap="goBack">返回提词器</button>
+  </view>
+
+  <!-- 历史记录列表 -->
+  <view wx:else class="history-list">
+    <view 
+      class="history-item {{theme}}"
+      wx:for="{{historyList}}" 
+      wx:key="id"
+      data-id="{{item.id}}"
+    >
+      <view class="item-content" bindtap="previewHistory" data-id="{{item.id}}">
+        <view class="item-text">{{item.text}}</view>
+        <view class="item-meta">
+          <text class="item-time">{{item.createTime}}</text>
+          <view class="item-options">
+            <text wx:if="{{item.options.fontSize}}" class="option-tag">字体: {{item.options.fontSize}}px</text>
+            <text wx:if="{{item.options.isMirror}}" class="option-tag">镜像</text>
+            <text wx:if="{{item.options.isMarquee}}" class="option-tag">跑马灯</text>
+          </view>
+        </view>
+      </view>
+      <view class="item-actions">
+        <button class="action-btn use" bindtap="useHistoryItem" data-id="{{item.id}}">使用</button>
+        <button class="action-btn delete" bindtap="deleteHistoryItem" data-id="{{item.id}}">删除</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部提示 -->
+  <view wx:if="{{historyList.length > 0}}" class="footer">
+    <text class="footer-text">共 {{historyList.length}} 条记录（最多保存20条）</text>
+  </view>
+</view>
