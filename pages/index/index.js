@@ -11,13 +11,13 @@ Page({
     theme: 'light',
     isMarquee: false,
     scrollTop: 0,
-    textHeight: 0,
     windowHeight: 0,
     showControlPanel: true,
     marqueeDistance: 0,
     isTeleprompterMode: false,
     timer: null,
-    marqueeTimer: null
+    marqueeTimer: null,
+    animationFrameId: null
   },
 
   onLoad(options) {
@@ -47,10 +47,23 @@ Page({
   },
 
   getSystemInfo() {
-    const res = wx.getSystemInfoSync()
-    this.setData({
-      windowHeight: res.windowHeight
-    })
+    try {
+      const windowInfo = wx.getWindowInfo()
+      this.setData({
+        windowHeight: windowInfo.windowHeight
+      })
+    } catch (e) {
+      try {
+        const res = wx.getSystemInfoSync()
+        this.setData({
+          windowHeight: res.windowHeight
+        })
+      } catch (e2) {
+        this.setData({
+          windowHeight: 600
+        })
+      }
+    }
   },
 
   onTextInput(e) {
@@ -64,12 +77,6 @@ Page({
     this.setData({ fontSize })
     wx.setStorageSync('fontSize', fontSize)
     app.globalData.fontSize = fontSize
-    
-    if (this.data.isTeleprompterMode) {
-      setTimeout(() => {
-        this.measureTextHeight()
-      }, 100)
-    }
   },
 
   onSpeedChange(e) {
@@ -105,16 +112,27 @@ Page({
 
   toggleMarquee() {
     const isMarquee = !this.data.isMarquee
-    this.setData({ isMarquee })
+    const wasPlaying = this.data.isPlaying
     
-    if (this.data.isPlaying) {
-      if (isMarquee) {
-        this.stopScroll()
-        this.startMarquee()
-      } else {
-        this.stopMarquee()
-        this.startScroll()
-      }
+    if (wasPlaying) {
+      this.pauseAll()
+    }
+    
+    this.setData({ 
+      isMarquee,
+      marqueeDistance: 0,
+      scrollTop: 0
+    })
+    
+    if (wasPlaying) {
+      setTimeout(() => {
+        this.setData({ isPlaying: true })
+        if (isMarquee) {
+          this.startMarquee()
+        } else {
+          this.startScroll()
+        }
+      }, 100)
     }
   },
 
@@ -130,29 +148,24 @@ Page({
     this.setData({
       isTeleprompterMode: true,
       scrollTop: 0,
-      marqueeDistance: 0
+      marqueeDistance: 0,
+      isPlaying: false
     })
 
     this.saveHistory()
-
-    setTimeout(() => {
-      this.measureTextHeight()
-    }, 150)
-  },
-
-  measureTextHeight() {
-    const that = this
-    const query = wx.createSelectorQuery()
-    query.select('.text-content').boundingClientRect(function(rect) {
-      if (rect) {
-        that.setData({ textHeight: rect.height })
-      }
-    }).exec()
   },
 
   togglePlay() {
     if (!this.data.isTeleprompterMode) {
       this.startTeleprompter()
+      return
+    }
+
+    if (!this.data.text.trim()) {
+      wx.showToast({
+        title: '请先输入文字',
+        icon: 'none'
+      })
       return
     }
 
@@ -171,17 +184,15 @@ Page({
   },
 
   startScroll() {
-    const that = this
     this.clearAllTimers()
 
+    const that = this
     const timer = setInterval(() => {
-      let newScrollTop = that.data.scrollTop + that.data.scrollSpeed
-      const maxScroll = Math.max(0, that.data.textHeight - (that.data.windowHeight * 0.6))
-      
-      if (newScrollTop >= maxScroll) {
-        newScrollTop = maxScroll
-        that.pauseAll()
+      if (!that.data.isPlaying) {
+        clearInterval(timer)
+        return
       }
+      const newScrollTop = that.data.scrollTop + that.data.scrollSpeed
       that.setData({ scrollTop: newScrollTop })
     }, 30)
 
@@ -201,11 +212,15 @@ Page({
   },
 
   startMarquee() {
-    const that = this
     this.clearAllTimers()
 
+    const that = this
     const marqueeTimer = setInterval(() => {
-      let distance = that.data.marqueeDistance + that.data.scrollSpeed
+      if (!that.data.isPlaying) {
+        clearInterval(marqueeTimer)
+        return
+      }
+      const distance = that.data.marqueeDistance + that.data.scrollSpeed
       that.setData({ marqueeDistance: distance })
     }, 30)
 
@@ -227,6 +242,10 @@ Page({
     if (this.data.marqueeTimer) {
       clearInterval(this.data.marqueeTimer)
       this.setData({ marqueeTimer: null })
+    }
+    if (this.data.animationFrameId) {
+      wx.cancelAnimationFrame(this.data.animationFrameId)
+      this.setData({ animationFrameId: null })
     }
   },
 
@@ -260,7 +279,8 @@ Page({
     app.globalData.scrollSpeed = newSpeed
     wx.showToast({
       title: `速度: ${newSpeed.toFixed(1)}`,
-      icon: 'none'
+      icon: 'none',
+      duration: 800
     })
   },
 
@@ -271,7 +291,8 @@ Page({
     app.globalData.scrollSpeed = newSpeed
     wx.showToast({
       title: `速度: ${newSpeed.toFixed(1)}`,
-      icon: 'none'
+      icon: 'none',
+      duration: 800
     })
   },
 
