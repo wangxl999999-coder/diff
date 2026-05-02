@@ -31,20 +31,25 @@
     "lazyloadPlaceholderEnable": false,
     "useStaticServer": true,
     "showES6CompileOption": false,
-    "useCompilerPlugins": false
+    "useCompilerPlugins": false,
+    "compileWorklet": false,
+    "uploadWithSourceMap": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true
   },
   "compileType": "miniprogram",
   "libVersion": "3.3.4",
-  "appid": "wxtest1234567890",
+  "appid": "wxe27488ddb2466f82",
   "projectname": "live-teleprompter",
-  "debugOptions": {
-    "hidedInDevtools": []
-  },
-  "scripts": {},
   "isGameTourist": false,
   "condition": {},
   "editorSetting": {
     "tabIndent": "insertSpaces",
     "tabSize": 2
-  }
+  },
+  "simulatorPluginLibVersion": {}
 }

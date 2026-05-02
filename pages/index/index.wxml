@@ -1,137 +1,194 @@
 <view class="container {{theme}} {{isFullScreen ? 'fullscreen' : ''}} {{isMirror ? 'mirror' : ''}}">
   <!-- 输入模式 -->
-  <view wx:if="{{!isPlaying && !displayText}}" class="input-container">
+  <view wx:if="{{!isTeleprompterMode}}" class="input-container">
     <view class="input-header">
-      <text class="title">请输入提词内容</text>
+      <text class="title">直播提词器</text>
       <view class="header-actions">
-        <button class="action-btn" bindtap="goToHistory">历史记录</button>
+        <button class="action-btn small" bindtap="toggleTheme">
+          {{theme === 'dark' ? '🌙' : '☀️'}}
+        </button>
+        <button class="action-btn small" bindtap="goToHistory">历史</button>
       </view>
     </view>
-    <textarea 
-      class="textarea {{theme}}"
-      placeholder="在这里输入您的提词内容...\n支持多行文本"
-      value="{{text}}"
-      bindinput="onTextInput"
-      auto-height
-      maxlength="-1"
-    ></textarea>
+    <view class="input-area {{theme}}">
+      <textarea 
+        class="textarea {{theme}}"
+        placeholder="请输入提词内容，支持多行文本..."
+        value="{{text}}"
+        bindinput="onTextInput"
+        auto-height
+        maxlength="-1"
+        focus="{{true}}"
+      ></textarea>
+    </view>
+    <view class="settings-area {{theme}}">
+      <view class="setting-item">
+        <text class="setting-label">字体大小: {{fontSize}}px</text>
+        <slider 
+          class="setting-slider"
+          min="20" 
+          max="100" 
+          value="{{fontSize}}" 
+          bindchange="onFontSizeChange"
+          activeColor="#1296db"
+          block-size="20"
+        />
+      </view>
+      <view class="setting-item">
+        <text class="setting-label">滚动速度: {{scrollSpeed.toFixed(1)}}</text>
+        <slider 
+          class="setting-slider"
+          min="0.5" 
+          max="8" 
+          step="0.5"
+          value="{{scrollSpeed}}" 
+          bindchange="onSpeedChange"
+          activeColor="#1296db"
+          block-size="20"
+        />
+      </view>
+      <view class="setting-item switches">
+        <button class="toggle-btn {{isMirror ? 'active' : ''}}" bindtap="toggleMirror">
+          {{isMirror ? '镜像: 开' : '镜像: 关'}}
+        </button>
+        <button class="toggle-btn {{isMarquee ? 'active' : ''}}" bindtap="toggleMarquee">
+          {{isMarquee ? '跑马灯' : '垂直滚动'}}
+        </button>
+      </view>
+    </view>
     <view class="input-actions">
       <button class="action-btn secondary" bindtap="clearText">清空</button>
-      <button class="action-btn primary" bindtap="togglePlay">开始提词</button>
+      <button class="action-btn primary large" bindtap="togglePlay">开始提词</button>
     </view>
   </view>
 
   <!-- 提词显示模式 -->
   <view wx:else class="display-container">
     <!-- 跑马灯模式 -->
-    <view wx:if="{{isMarquee}}" class="marquee-container">
+    <view wx:if="{{isMarquee}}" class="marquee-container {{theme}}">
       <view class="marquee-wrapper">
         <text 
-          class="marquee-text {{theme}}"
+          class="marquee-text"
           style="font-size: {{fontSize}}px; transform: translateX(-{{marqueeDistance}}px);"
-        >{{marqueeText}}</text>
+        >{{text}}</text>
         <text 
-          class="marquee-text {{theme}}"
+          class="marquee-text"
           style="font-size: {{fontSize}}px; transform: translateX(-{{marqueeDistance}}px);"
-        >{{marqueeText}}</text>
+        >{{text}}</text>
       </view>
     </view>
 
     <!-- 正常滚动模式 -->
-    <view wx:else class="scroll-container">
+    <view wx:else class="scroll-container {{theme}}">
       <scroll-view 
-        class="text-scroll {{theme}}"
+        class="text-scroll"
         scroll-y 
         scroll-top="{{scrollTop}}"
         enhanced
         show-scrollbar="false"
+        scroll-with-animation="false"
       >
         <view 
           class="text-content"
-          style="font-size: {{fontSize}}px;"
-          bind:transitionend="onTextAreaReady"
+          style="font-size: {{fontSize}}px; line-height: {{fontSize * 1.8}}px;"
         >
-          <text>{{displayText}}</text>
+          <text>{{text}}</text>
         </view>
-        <view class="padding-bottom"></view>
+        <view class="scroll-padding"></view>
       </scroll-view>
+    </view>
+
+    <!-- 状态指示器 -->
+    <view wx:if="{{showControlPanel}}" class="status-bar {{theme}}">
+      <view class="status-item">
+        <text class="status-label">速度</text>
+        <text class="status-value">{{scrollSpeed.toFixed(1)}}</text>
+      </view>
+      <view class="status-item">
+        <text class="status-label">字体</text>
+        <text class="status-value">{{fontSize}}px</text>
+      </view>
+      <view class="status-item {{isPlaying ? 'playing' : 'paused'}}">
+        <text class="status-dot"></text>
+        <text class="status-text">{{isPlaying ? '播放中' : '已暂停'}}</text>
+      </view>
     </view>
 
     <!-- 控制面板 -->
     <view wx:if="{{showControlPanel}}" class="control-panel {{theme}}">
-      <!-- 第一行：播放控制 -->
-      <view class="control-row">
-        <view class="control-group">
-          <button class="control-btn {{isPlaying ? 'pause' : 'play'}}" bindtap="togglePlay">
-            <text wx:if="{{!isPlaying}}">▶ 播放</text>
-            <text wx:else>⏸ 暂停</text>
+      <!-- 播放控制 -->
+      <view class="control-section">
+        <view class="control-row main-controls">
+          <button class="control-btn icon reset" bindtap="resetScroll">
+            <text class="icon-text">⏮</text>
+            <text class="btn-text">重置</text>
           </button>
-          <button class="control-btn" bindtap="resetScroll">⏮ 重置</button>
+          <button class="control-btn icon play-pause {{isPlaying ? 'playing' : ''}}" bindtap="togglePlay">
+            <text class="icon-text large">{{isPlaying ? '⏸' : '▶'}}</text>
+          </button>
+          <button class="control-btn icon exit" bindtap="exitTeleprompter">
+            <text class="icon-text">✕</text>
+            <text class="btn-text">退出</text>
+          </button>
         </view>
       </view>
 
-      <!-- 第二行：字体大小 -->
-      <view class="control-row">
-        <view class="control-group">
-          <text class="control-label">字体: {{fontSize}}px</text>
-          <slider 
-            class="control-slider"
-            min="16" 
-            max="120" 
-            value="{{fontSize}}" 
-            bindchange="onFontSizeChange"
-            activeColor="#1296db"
-          />
-        </view>
-      </view>
-
-      <!-- 第三行：滚动速度 -->
-      <view class="control-row">
-        <view class="control-group">
-          <text class="control-label">速度: {{scrollSpeed.toFixed(1)}}</text>
-          <slider 
-            class="control-slider"
-            min="0.5" 
-            max="10" 
-            step="0.5"
-            value="{{scrollSpeed}}" 
-            bindchange="onSpeedChange"
-            activeColor="#1296db"
-          />
-          <view class="speed-buttons">
-            <button class="speed-btn" bindtap="decreaseSpeed">减速</button>
-            <button class="speed-btn" bindtap="increaseSpeed">加速</button>
+      <!-- 速度控制 -->
+      <view class="control-section">
+        <view class="control-row">
+          <button class="speed-control-btn" bindtap="decreaseSpeed">
+            <text class="speed-icon">−</text>
+            <text class="speed-label">减速</text>
+          </button>
+          <view class="speed-display">
+            <text class="speed-value">{{scrollSpeed.toFixed(1)}}</text>
+            <text class="speed-unit">速度</text>
           </view>
-        </view>
-      </view>
-
-      <!-- 第四行：功能开关 -->
-      <view class="control-row">
-        <view class="control-group switches">
-          <button class="toggle-btn {{theme === 'dark' ? 'active' : ''}}" bindtap="toggleTheme">
-            {{theme === 'dark' ? '🌙 暗黑' : '☀️ 明亮'}}
-          </button>
-          <button class="toggle-btn {{isFullScreen ? 'active' : ''}}" bindtap="toggleFullScreen">
-            {{isFullScreen ? '退出全屏' : '全屏'}}
-          </button>
-          <button class="toggle-btn {{isMirror ? 'active' : ''}}" bindtap="toggleMirror">
-            {{isMirror ? '取消镜像' : '镜像'}}
-          </button>
-          <button class="toggle-btn {{isMarquee ? 'active' : ''}}" bindtap="toggleMarquee">
-            {{isMarquee ? '正常滚动' : '跑马灯'}}
+          <button class="speed-control-btn" bindtap="increaseSpeed">
+            <text class="speed-icon">+</text>
+            <text class="speed-label">加速</text>
           </button>
         </view>
       </view>
 
-      <!-- 第五行：返回编辑 -->
-      <view class="control-row">
-        <button class="back-btn" bindtap="resetScroll">返回编辑</button>
+      <!-- 快速设置 -->
+      <view class="control-section quick-settings">
+        <button class="quick-btn {{isMirror ? 'active' : ''}}" bindtap="toggleMirror">
+          <text class="quick-icon">{{isMirror ? '🔄' : '↔️'}}</text>
+          <text class="quick-label">{{isMirror ? '镜像' : '正常'}}</text>
+        </button>
+        <button class="quick-btn {{isMarquee ? 'active' : ''}}" bindtap="toggleMarquee">
+          <text class="quick-icon">{{isMarquee ? '↔' : '↕'}}</text>
+          <text class="quick-label">{{isMarquee ? '跑马灯' : '滚动'}}</text>
+        </button>
+        <button class="quick-btn {{isFullScreen ? 'active' : ''}}" bindtap="toggleFullScreen">
+          <text class="quick-icon">{{isFullScreen ? '📱' : '⛶'}}</text>
+          <text class="quick-label">{{isFullScreen ? '退出' : '全屏'}}</text>
+        </button>
+        <button class="quick-btn {{theme === 'dark' ? 'active' : ''}}" bindtap="toggleTheme">
+          <text class="quick-icon">{{theme === 'dark' ? '🌙' : '☀️'}}</text>
+          <text class="quick-label">{{theme === 'dark' ? '暗黑' : '明亮'}}</text>
+        </button>
+      </view>
+
+      <!-- 字体大小调节 -->
+      <view class="control-section font-size-section">
+        <text class="section-title">字体大小: {{fontSize}}px</text>
+        <slider 
+          class="font-slider"
+          min="20" 
+          max="100" 
+          value="{{fontSize}}" 
+          bindchange="onFontSizeChange"
+          activeColor="#1296db"
+          block-size="20"
+        />
       </view>
     </view>
 
     <!-- 隐藏控制面板按钮 (全屏时显示) -->
-    <view wx:if="{{isFullScreen}}" class="hide-panel-btn" bindtap="toggleControlPanel">
-      {{showControlPanel ? '隐藏控制' : '显示控制'}}
+    <view wx:if="{{isFullScreen}}" class="toggle-panel-btn {{theme}}" bindtap="toggleControlPanel">
+      {{showControlPanel ? '▼ 隐藏控制' : '▲ 显示控制'}}
     </view>
   </view>
 </view>
